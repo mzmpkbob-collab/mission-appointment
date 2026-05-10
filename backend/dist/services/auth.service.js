@@ -1,14 +1,22 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const password_1 = require("../utils/password");
 const jwt_1 = require("../utils/jwt");
 const user_repository_1 = require("../repositories/user.repository");
 const auditLog_repository_1 = require("../repositories/auditLog.repository");
+const password_2 = require("../utils/password");
+const crypto_1 = __importDefault(require("crypto"));
+const email_service_1 = require("./email.service");
+const ApiError_1 = require("../utils/ApiError");
 class AuthService {
     constructor() {
         this.userRepository = new user_repository_1.UserRepository();
         this.auditLogRepository = new auditLog_repository_1.AuditLogRepository();
+        this.emailService = new email_service_1.EmailService();
     }
     async login(email, password, ipAddress, userAgent) {
         // Find user by email
@@ -62,21 +70,6 @@ class AuthService {
             },
         };
     }
-    // async register(data: {
-    //   email: string;
-    //   password: string;
-    //   firstName: string;
-    //   lastName: string;
-    //   role: 'admin' | 'user';
-    // }) {
-    //   // Check if email already exists
-    //   const existingUser = await this.userRepository.getUserByEmail(data.email);
-    //   if (existingUser) {
-    //     throw new Error('Email already in use');
-    //   }
-    //   data.password = await hashPassword(data.password);
-    //   return this.userRepository.createUser(data);
-    // }
     async logout(userId, ipAddress, userAgent) {
         // Log the logout action to AuditLog
         await this.auditLogRepository.createAuditLog({
@@ -92,6 +85,35 @@ class AuthService {
     }
     async getLoginHistory(userId) {
         return await this.auditLogRepository.getLoginLogsByUser(userId);
+    }
+    async forgotPassword(email) {
+        const user = await this.userRepository.getUserByEmail(email);
+        if (!user) {
+            // For security, don't reveal if user exists
+            return { message: 'Si cet e-mail est enregistré, vous recevrez un lien de réinitialisation.' };
+        }
+        // Generate token
+        const token = crypto_1.default.randomBytes(32).toString('hex');
+        const expires = new Date(Date.now() + 3600000); // 1 hour
+        await this.userRepository.updateUser(user.id, {
+            resetPasswordToken: token,
+            resetPasswordExpires: expires,
+        });
+        await this.emailService.sendPasswordResetEmail(email, token);
+        return { message: 'Si cet e-mail est enregistré, vous recevrez un lien de réinitialisation.' };
+    }
+    async resetPassword(token, newPassword) {
+        const user = await this.userRepository.getUserByResetToken(token);
+        if (!user || !user.resetPasswordExpires || user.resetPasswordExpires < new Date()) {
+            throw new ApiError_1.ApiError('Le lien de réinitialisation est invalide ou a expiré.', 400);
+        }
+        const hashedPassword = await (0, password_2.hashPassword)(newPassword);
+        await this.userRepository.updateUser(user.id, {
+            password: hashedPassword,
+            resetPasswordToken: null,
+            resetPasswordExpires: null,
+        });
+        return { message: 'Votre mot de passe a été réinitialisé avec succès.' };
     }
 }
 exports.AuthService = AuthService;

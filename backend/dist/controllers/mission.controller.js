@@ -235,5 +235,19 @@ class MissionController {
             next(error);
         }
     }
+    // Download mission letter
+    async downloadMissionLetter(req, res, next) {
+        try {
+            const missionId = req.params.id;
+            const userId = req.user.id;
+            const pdfBuffer = await this.missionService.generateMissionLetter(missionId, userId);
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="mission_order_${missionId}.pdf"`);
+            res.send(pdfBuffer);
+        }
+        catch (error) {
+            next(error);
+        }
+    }
 }
 exports.MissionController = MissionController;

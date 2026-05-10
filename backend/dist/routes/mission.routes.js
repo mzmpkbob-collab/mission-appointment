@@ -640,4 +640,31 @@ router.post("/:id/report", auth_1.authenticate, (0, auth_1.authorize)(["EMPLOYEE
 router.get("/:id/report", auth_1.authenticate, (0, auth_1.authorize)(["EMPLOYEE", "HEAD_OF_DEPARTMENT", "DEPARTMENT_HEAD", "FINANCE", "HR", "DIRECTOR", "ADMIN"]), [
     (0, express_validator_1.param)("id").isUUID().withMessage("Mission ID must be valid UUID"),
 ], validateRequest, (req, res, next) => missionController.getMissionReport(req, res, next));
+/**
+ * @swagger
+ * /api/missions/{id}/letter:
+ *   get:
+ *     summary: Download mission letter (PDF)
+ *     tags: [Missions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Mission letter generated and downloaded
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ */
+router.get("/:id/letter", auth_1.authenticate, (0, auth_1.authorize)(["EMPLOYEE", "HEAD_OF_DEPARTMENT", "DEPARTMENT_HEAD", "FINANCE", "HR", "DIRECTOR", "ADMIN"]), [
+    (0, express_validator_1.param)("id").isUUID().withMessage("Mission ID must be valid UUID"),
+], validateRequest, (req, res, next) => missionController.downloadMissionLetter(req, res, next));
 exports.default = router;

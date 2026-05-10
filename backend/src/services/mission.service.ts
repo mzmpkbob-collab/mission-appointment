@@ -4,7 +4,8 @@ import { DepartmentRepository } from "../repositories/department.repository";
 import { ApiError } from "../utils/ApiError";
 import { CreateMissionDto, UpdateMissionDto, MissionFilterDto, AutoAssignmentDto, AssignmentResultDto } from "../types/mission.dto";
 import { Prisma, MissionStatus, AssignmentStatus } from "@prisma/client";
-import {prisma} from "../config/prisma";
+import { prisma } from "../config/prisma";
+import PDFDocument from 'pdfkit';
 
 export class MissionService {
     private missionRepository: MissionRepository;
@@ -84,7 +85,7 @@ export class MissionService {
     // Auto-assignment logic
     async autoAssignMission(data: AutoAssignmentDto): Promise<AssignmentResultDto[]> {
         const mission = await this.getMissionById(data.missionId);
-        
+
         if (mission.status !== MissionStatus.DRAFT) {
             throw new ApiError("Can only auto-assign missions in DRAFT status", 400);
         }
@@ -165,8 +166,8 @@ export class MissionService {
 
         const employeeSkillNames = employeeSkills.map(skill => skill.skillName.toLowerCase());
         const requiredSkillsLower = requiredSkills.map(skill => skill.toLowerCase());
-        
-        const matchedSkills = requiredSkillsLower.filter(skill => 
+
+        const matchedSkills = requiredSkillsLower.filter(skill =>
             employeeSkillNames.includes(skill)
         );
 
@@ -224,7 +225,7 @@ export class MissionService {
 
     async getMissionAssignments(missionId: string) {
         await this.getMissionById(missionId);
-        
+
         return prisma.missionAssignment.findMany({
             where: { missionId },
             include: {
@@ -311,7 +312,7 @@ export class MissionService {
     // Approve mission at different approval levels
     async approveMission(missionId: string, userId: string, userRole: string, comments?: string, approvalLevel?: string) {
         const mission = await this.getMissionById(missionId);
-        
+
         if (!mission) {
             throw new ApiError("Mission not found", 404);
         }
@@ -324,7 +325,7 @@ export class MissionService {
             case 'DEPARTMENT_HEAD':
                 if (mission.status === 'ASSIGNED') {
                     newStatus = 'IN_APPROVAL';
-                }else if (mission.status !== 'IN_APPROVAL') {
+                } else if (mission.status !== 'IN_APPROVAL') {
                     newStatus = 'IN_APPROVAL'; // Department head can give preliminary approval, but final approval is by finance/director
                 } else {
                     throw new ApiError("Mission must be assigned before department head approval", 400);
@@ -355,7 +356,7 @@ export class MissionService {
 
         const updatedMission = await prisma.mission.update({
             where: { id: missionId },
-            data: { 
+            data: {
                 status: newStatus,
                 // You can add an approvals table later to track approval history
             },
@@ -376,7 +377,7 @@ export class MissionService {
     // Reject mission at any approval level
     async rejectMission(missionId: string, userId: string, userRole: string, comments?: string, rejectionReason?: string) {
         const mission = await this.getMissionById(missionId);
-        
+
         if (!mission) {
             throw new ApiError("Mission not found", 404);
         }
@@ -389,7 +390,7 @@ export class MissionService {
 
         const updatedMission = await prisma.mission.update({
             where: { id: missionId },
-            data: { 
+            data: {
                 status: 'REJECTED',
                 // You can add a rejections table later to track rejection history and reasons
             },
@@ -708,7 +709,7 @@ export class MissionService {
 
     async submitMissionReport(missionId: string, userId: string, activityReport: string) {
         const mission = await this.getMissionById(missionId);
-        
+
         if (!mission) {
             throw new ApiError("Mission not found", 404);
         }
@@ -739,6 +740,120 @@ export class MissionService {
                 }
             },
             orderBy: { createdAt: 'desc' }
+        });
+    }
+
+    async generateMissionLetter(missionId: string, userId: string): Promise<Buffer> {
+        const mission = await this.getMissionById(missionId);
+
+        if (!mission) {
+            throw new ApiError("Mission not found", 404);
+        }
+
+        // We only allow downloading if the mission is approved or further along
+        if (!['APPROVED', 'IN_PROGRESS', 'COMPLETED'].includes(mission.status)) {
+            throw new ApiError("Mission is not approved yet", 400);
+        }
+
+        // Find the specific assignment for this user
+        let assignment = mission.assignments.find(a => a.employeeId === userId);
+
+        // If the user isn't assigned, maybe they are a manager/admin. Just take the first valid assignment for the letter.
+        if (!assignment) {
+            assignment = mission.assignments.find(a => ['ACCEPTED', 'SUBSTITUTED', 'PENDING'].includes(a.assignmentStatus));
+        }
+
+        if (!assignment) {
+            throw new ApiError("No valid assignment found for this mission", 400);
+        }
+
+        const employee = assignment.employee;
+
+        return new Promise((resolve, reject) => {
+            try {
+                const doc = new PDFDocument({ margin: 50, size: 'A4' });
+                const chunks: Buffer[] = [];
+
+                doc.on('data', (chunk) => chunks.push(chunk));
+                doc.on('end', () => resolve(Buffer.concat(chunks)));
+                doc.on('error', reject);
+
+                // --- Header ---
+                doc.font('Helvetica-Bold')
+                    .fontSize(16)
+                    .text('MISSION APPOINTMENT SYSTEM', { align: 'center' });
+
+                doc.fontSize(12)
+                    .text('MINISTRY OF PUBLIC SERVICE', { align: 'center' });
+
+                doc.moveDown();
+                doc.text(mission.department.name.toUpperCase(), { align: 'center' });
+
+                doc.moveDown(2);
+
+                // Line separator
+                doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+                doc.moveDown(2);
+
+                // --- Title ---
+                doc.font('Helvetica-Bold')
+                    .fontSize(18)
+                    .text('MISSION ORDER', { align: 'center', underline: true });
+
+                doc.moveDown(2);
+
+                // --- Content ---
+                doc.font('Helvetica')
+                    .fontSize(12);
+
+                doc.text(`Reference No: `, { continued: true }).font('Helvetica-Bold').text(`${mission.missionNumber}`);
+                doc.font('Helvetica').moveDown(1.5);
+
+                const startDate = new Date(mission.startDate).toLocaleDateString('en-GB');
+                const endDate = new Date(mission.endDate).toLocaleDateString('en-GB');
+                const duration = Math.ceil((new Date(mission.endDate).getTime() - new Date(mission.startDate).getTime()) / (1000 * 60 * 60 * 24)) || 1;
+
+                doc.font('Helvetica').text('The Director General / Authorizing Officer hereby authorizes the following employee to proceed on official duty:', { align: 'justify' });
+                doc.moveDown(1);
+
+                doc.font('Helvetica-Bold').text(`${employee.firstName} ${employee.lastName}`, { indent: 20 });
+                doc.font('Helvetica').text(`${employee.role}, ${mission.department.name}`, { indent: 20 });
+
+                doc.moveDown(1);
+                doc.font('Helvetica').text(`The employee is directed to travel to `, { continued: true, align: 'justify' })
+                    .font('Helvetica-Bold').text(`${mission.destination}`, { continued: true })
+                    .font('Helvetica').text(` for the purpose of executing the mission titled: `, { continued: true })
+                    .font('Helvetica-Bold').text(`"${mission.title}"`, { continued: true })
+                    .font('Helvetica').text(`. The scope of this mission entails: ${mission.description}`);
+
+                doc.moveDown(1);
+                doc.text(`This official mission is scheduled to commence on `, { continued: true, align: 'justify' })
+                    .font('Helvetica-Bold').text(`${startDate}`, { continued: true })
+                    .font('Helvetica').text(` and will conclude on `, { continued: true })
+                    .font('Helvetica-Bold').text(`${endDate}`, { continued: true })
+                    .font('Helvetica').text(`, spanning a total duration of `, { continued: true })
+                    .font('Helvetica-Bold').text(`${duration} days`, { continued: true })
+                    .font('Helvetica').text(`.`);
+
+                doc.moveDown(1);
+                doc.text(`The authorized estimated budget for this mission is `, { continued: true, align: 'justify' })
+                    .font('Helvetica-Bold').text(`${mission.estimatedBudget} `, { continued: true })
+                    .font('Helvetica').text(` which will be fully covered by the institution's designated funds.`);
+
+                doc.moveDown(3);
+
+                // --- Footer / Signature ---
+                const currentDate = new Date().toLocaleDateString('en-GB');
+                doc.font('Helvetica').text(`Done in MIS, on ${currentDate}`, { align: 'right' });
+
+                doc.moveDown(2);
+                doc.font('Helvetica-Bold').text('Signature and Stamp', { align: 'right' });
+                doc.text('Authorizing Authority', { align: 'right' });
+
+                doc.end();
+            } catch (error) {
+                reject(error);
+            }
         });
     }
 }

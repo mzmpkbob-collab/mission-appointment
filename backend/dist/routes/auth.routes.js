@@ -99,4 +99,11 @@ router.post("/register", [
  *         description: Unauthorized
  */
 router.post("/logout", (req, res, next) => authController.logout(req, res, next));
+router.post("/forgot-password", [
+    (0, express_validator_1.body)("email").isEmail().withMessage("Valid email is required"),
+], validateRequest, (req, res, next) => authController.forgotPassword(req, res, next));
+router.post("/reset-password", [
+    (0, express_validator_1.body)("token").notEmpty().withMessage("Token is required"),
+    (0, express_validator_1.body)("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters long"),
+], validateRequest, (req, res, next) => authController.resetPassword(req, res, next));
 exports.default = router;

@@ -12,6 +12,11 @@ class UserRepository {
             where: { email },
         });
     }
+    async getUserByResetToken(token) {
+        return prisma_1.prisma.user.findFirst({
+            where: { resetPasswordToken: token },
+        });
+    }
     async getUserByEmployeeId(employeeId) {
         return prisma_1.prisma.user.findUnique({
             where: { employeeId },

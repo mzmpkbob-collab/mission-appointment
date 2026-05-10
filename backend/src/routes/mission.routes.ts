@@ -785,4 +785,39 @@ router.get(
     (req: Request, res: Response, next: NextFunction) => missionController.getMissionReport(req, res, next)
 );
 
+/**
+ * @swagger
+ * /api/missions/{id}/letter:
+ *   get:
+ *     summary: Download mission letter (PDF)
+ *     tags: [Missions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Mission letter generated and downloaded
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ */
+router.get(
+    "/:id/letter",
+    authenticate,
+    authorize(["EMPLOYEE", "HEAD_OF_DEPARTMENT", "DEPARTMENT_HEAD", "FINANCE", "HR", "DIRECTOR", "ADMIN"]),
+    [
+        param("id").isUUID().withMessage("Mission ID must be valid UUID"),
+    ],
+    validateRequest,
+    (req: Request, res: Response, next: NextFunction) => missionController.downloadMissionLetter(req, res, next)
+);
+
 export default router;

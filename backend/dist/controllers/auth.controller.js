@@ -75,5 +75,31 @@ class AuthController {
             next(error);
         }
     }
+    async forgotPassword(req, res, next) {
+        try {
+            const { email } = req.body;
+            if (!email) {
+                throw new appError_1.BadRequestError("Email is required");
+            }
+            const result = await this.authService.forgotPassword(email);
+            return response_1.ApiResponseHelper.success(res, result, result.message);
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async resetPassword(req, res, next) {
+        try {
+            const { token, password } = req.body;
+            if (!token || !password) {
+                throw new appError_1.BadRequestError("Token and password are required");
+            }
+            const result = await this.authService.resetPassword(token, password);
+            return response_1.ApiResponseHelper.success(res, result, result.message);
+        }
+        catch (error) {
+            next(error);
+        }
+    }
 }
 exports.AuthController = AuthController;
