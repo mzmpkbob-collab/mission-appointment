@@ -120,8 +120,8 @@ export function AppSidebar({ userRole, userName, userEmail }: AppSidebarProps) {
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
         {!collapsed && (
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg gradient-gov flex items-center justify-center">
-              <span className="text-white font-bold text-sm">RNP</span>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white overflow-hidden p-0.5 shadow-sm border border-sidebar-border">
+              <img src="/Logo_RNP_Burundi.png" alt="RNP Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="font-bold text-sidebar-foreground text-sm">MAS</span>
@@ -130,8 +130,8 @@ export function AppSidebar({ userRole, userName, userEmail }: AppSidebarProps) {
           </div>
         )}
         {collapsed && (
-          <div className="w-8 h-8 rounded-lg gradient-gov flex items-center justify-center mx-auto">
-            <span className="text-white font-bold text-xs">R</span>
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center mx-auto bg-white overflow-hidden p-0.5 shadow-sm border border-sidebar-border">
+            <img src="/Logo_RNP_Burundi.png" alt="RNP Logo" className="w-full h-full object-contain" />
           </div>
         )}
       </div>

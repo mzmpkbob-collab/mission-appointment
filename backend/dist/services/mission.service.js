@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -11,6 +44,8 @@ const ApiError_1 = require("../utils/ApiError");
 const client_1 = require("@prisma/client");
 const prisma_1 = require("../config/prisma");
 const pdfkit_1 = __importDefault(require("pdfkit"));
+const path = __importStar(require("path"));
+const fs = __importStar(require("fs"));
 class MissionService {
     constructor() {
         this.missionRepository = new mission_repository_1.MissionRepository();
@@ -74,19 +109,149 @@ class MissionService {
     // Auto-assignment logic
     async autoAssignMission(data) {
         const mission = await this.getMissionById(data.missionId);
-        if (mission.status !== client_1.MissionStatus.DRAFT) {
-            throw new ApiError_1.ApiError("Can only auto-assign missions in DRAFT status", 400);
+        if (mission.status !== client_1.MissionStatus.DRAFT && mission.status !== client_1.MissionStatus.PENDING_ASSIGNMENT) {
+            throw new ApiError_1.ApiError("Can only auto-assign missions in DRAFT or PENDING_ASSIGNMENT status", 400);
         }
-        // Get eligible employees from mission's department
-        const eligibleEmployees = await this.missionRepository.getEligibleEmployees(mission.departmentId, mission.requiredQualifications);
+        // Get all existing assignments for this mission to see who declined / was substituted
+        const existingAssignments = await prisma_1.prisma.missionAssignment.findMany({
+            where: { missionId: mission.id },
+            select: { employeeId: true }
+        });
+        const excludedEmployeeIds = existingAssignments.map(a => a.employeeId);
+        // Find all active employees in the department (excluding head of department)
+        const allDeptEmployees = await prisma_1.prisma.user.findMany({
+            where: {
+                departmentId: mission.departmentId,
+                accountStatus: "ACTIVE",
+                role: { not: "HEAD_OF_DEPARTMENT" },
+            },
+            include: {
+                skills: true,
+                assignments: {
+                    include: { mission: true },
+                    orderBy: { assignedAt: "desc" },
+                    take: 5
+                }
+            }
+        });
+        let eligibleEmployees = [];
+        // 1. "if someone have attended mission and is only one available in that department system can allow that mission to be assigned to that employee again"
+        // If the department only has 1 active non-head employee, we can allow re-assigning them unless they have already declined or been substituted on THIS specific mission.
+        const hasDeclinedOrSubstitutedThisMission = allDeptEmployees.length === 1 ? await prisma_1.prisma.missionAssignment.findFirst({
+            where: {
+                missionId: mission.id,
+                employeeId: allDeptEmployees[0]?.id,
+                assignmentStatus: { in: ['DECLINED', 'SUBSTITUTED'] }
+            }
+        }) : null;
+        if (allDeptEmployees.length === 1 && !hasDeclinedOrSubstitutedThisMission) {
+            eligibleEmployees = allDeptEmployees;
+        }
+        else {
+            // Otherwise, filter by availabilityStatus: "AVAILABLE" and exclude already assigned/declined ones
+            eligibleEmployees = allDeptEmployees.filter(emp => emp.availabilityStatus === "AVAILABLE" &&
+                !excludedEmployeeIds.includes(emp.id));
+        }
+        // 2. If no available employee in department, try relaxing availability status (e.g. check if there's someone active in the department)
+        if (eligibleEmployees.length === 0 && allDeptEmployees.length > 0) {
+            // Find active employees in department who aren't on leave and haven't already declined/been assigned to this mission
+            eligibleEmployees = allDeptEmployees.filter(emp => emp.availabilityStatus !== "ON_LEAVE" &&
+                !excludedEmployeeIds.includes(emp.id));
+        }
+        // 3. If STILL no eligible employees in department:
+        // "if there's no person in department also system can take someone from another department but it can provide modal prompt for confirming it to someone who is creating that mission"
         if (eligibleEmployees.length === 0) {
-            throw new ApiError_1.ApiError("No eligible employees found for this mission", 400);
+            // Search in other departments
+            let otherDeptEmployees = await prisma_1.prisma.user.findMany({
+                where: {
+                    departmentId: { not: mission.departmentId },
+                    accountStatus: "ACTIVE",
+                    availabilityStatus: "AVAILABLE",
+                    role: { not: "HEAD_OF_DEPARTMENT" },
+                    id: { notIn: excludedEmployeeIds }
+                },
+                include: {
+                    skills: true,
+                    department: true,
+                    assignments: {
+                        include: { mission: true },
+                        orderBy: { assignedAt: "desc" },
+                        take: 5
+                    }
+                }
+            });
+            // Fallback: Relax availability constraint for other departments if no strictly AVAILABLE ones are found
+            if (otherDeptEmployees.length === 0) {
+                otherDeptEmployees = await prisma_1.prisma.user.findMany({
+                    where: {
+                        departmentId: { not: mission.departmentId },
+                        accountStatus: "ACTIVE",
+                        availabilityStatus: { not: "ON_LEAVE" },
+                        role: { not: "HEAD_OF_DEPARTMENT" },
+                        id: { notIn: excludedEmployeeIds }
+                    },
+                    include: {
+                        skills: true,
+                        department: true,
+                        assignments: {
+                            include: { mission: true },
+                            orderBy: { assignedAt: "desc" },
+                            take: 5
+                        }
+                    }
+                });
+            }
+            if (otherDeptEmployees.length === 0) {
+                return {
+                    success: true,
+                    assigned: false,
+                    message: "No eligible employees found in any department."
+                };
+            }
+            // Calculate scores for other department employees
+            const scoredOthers = otherDeptEmployees.map((employee) => {
+                const skillScore = this.calculateSkillScore(employee.skills, mission.requiredQualifications);
+                const fairnessScore = this.calculateFairnessScore(employee.assignments);
+                const totalScore = skillScore * 0.7 + fairnessScore * 0.3;
+                return {
+                    id: employee.id,
+                    firstName: employee.firstName,
+                    lastName: employee.lastName,
+                    email: employee.email,
+                    departmentName: employee.department?.name || "Other",
+                    skills: employee.skills.map(s => s.skillName),
+                    score: totalScore
+                };
+            }).sort((a, b) => b.score - a.score);
+            if (!data.allowCrossDepartment) {
+                // Return suggested employees for confirmation prompt
+                return {
+                    success: true,
+                    assigned: false,
+                    needsConfirmation: true,
+                    suggestedEmployees: scoredOthers.slice(0, 3) // Return top 3 suggestions
+                };
+            }
+            else {
+                // If allowed, we take the top one
+                const bestEmployee = otherDeptEmployees.find(e => e.id === scoredOthers[0].id);
+                if (bestEmployee) {
+                    eligibleEmployees = [bestEmployee];
+                }
+            }
         }
-        // Calculate scores for each employee
+        if (eligibleEmployees.length === 0) {
+            return {
+                success: true,
+                assigned: false,
+                message: "No eligible employees found for assignment."
+            };
+        }
+        // Calculate scores for selected employees
         const scoredEmployees = eligibleEmployees.map((employee) => {
             const skillScore = this.calculateSkillScore(employee.skills, mission.requiredQualifications);
             const fairnessScore = this.calculateFairnessScore(employee.assignments);
-            const totalScore = skillScore * 0.7 + fairnessScore * 0.3; // 70% skills, 30% fairness
+            const totalScore = skillScore * 0.7 + fairnessScore * 0.3;
             return {
                 employee,
                 skillScore,
@@ -133,7 +298,11 @@ class MissionService {
         await this.missionRepository.updateMission(mission.id, {
             status: client_1.MissionStatus.PENDING_ASSIGNMENT,
         });
-        return assignments;
+        return {
+            success: true,
+            assigned: true,
+            assignments
+        };
     }
     // Calculate skill match score (0-100)
     calculateSkillScore(employeeSkills, requiredSkills) {
@@ -214,7 +383,10 @@ class MissionService {
     // Get assignments for current user (employee view)
     async getUserAssignments(userId) {
         return prisma_1.prisma.missionAssignment.findMany({
-            where: { employeeId: userId },
+            where: {
+                employeeId: userId,
+                assignmentStatus: { not: 'SUBSTITUTED' }
+            },
             include: {
                 mission: {
                     include: {
@@ -386,6 +558,7 @@ class MissionService {
                 department: true,
                 createdBy: true,
                 assignments: {
+                    orderBy: { assignedAt: 'desc' },
                     include: {
                         employee: true,
                     },
@@ -473,6 +646,7 @@ class MissionService {
             },
         });
         // Update assignment based on decision
+        let autoAssignResult = null;
         if (status === 'APPROVED') {
             // Mark original assignment as substituted
             await prisma_1.prisma.missionAssignment.update({
@@ -488,6 +662,20 @@ class MissionService {
                     status: 'PENDING_ASSIGNMENT',
                 },
             });
+            // Automatically attempt auto-assignment!
+            try {
+                autoAssignResult = await this.autoAssignMission({
+                    missionId: substitutionRequest.assignment.missionId,
+                    maxAssignees: 1
+                });
+            }
+            catch (assignErr) {
+                console.error("Auto-assignment failed during substitution approval:", assignErr);
+                autoAssignResult = {
+                    success: false,
+                    message: assignErr instanceof Error ? assignErr.message : "Auto-assignment failed."
+                };
+            }
         }
         else {
             // Rejected - revert assignment to pending
@@ -500,7 +688,21 @@ class MissionService {
                 },
             });
         }
-        return updatedRequest;
+        const result = {
+            id: updatedRequest.id,
+            reasonCategory: updatedRequest.reasonCategory,
+            detailedReason: updatedRequest.detailedReason,
+            supportingDocuments: updatedRequest.supportingDocuments,
+            status: updatedRequest.status,
+            reviewerComments: updatedRequest.reviewerComments,
+            reviewedAt: updatedRequest.reviewedAt,
+            assignmentId: updatedRequest.assignmentId,
+            employeeId: updatedRequest.employeeId,
+            createdAt: updatedRequest.createdAt,
+            updatedAt: updatedRequest.updatedAt,
+            autoAssignResult
+        };
+        return result;
     }
     // Get substitution requests (all for managers, own for employees)
     async getSubstitutionRequests(userId, userRole, status) {
@@ -678,9 +880,26 @@ class MissionService {
                 doc.on('end', () => resolve(Buffer.concat(chunks)));
                 doc.on('error', reject);
                 // --- Header ---
+                const logoPaths = [
+                    path.join(__dirname, '../assets/Logo_RNP_Burundi.png'),
+                    path.join(__dirname, '../../src/assets/Logo_RNP_Burundi.png'),
+                    path.join(process.cwd(), 'src/assets/Logo_RNP_Burundi.png'),
+                    path.join(process.cwd(), 'backend/src/assets/Logo_RNP_Burundi.png')
+                ];
+                let logoPath = '';
+                for (const p of logoPaths) {
+                    if (fs.existsSync(p)) {
+                        logoPath = p;
+                        break;
+                    }
+                }
+                if (logoPath) {
+                    doc.image(logoPath, 267, 30, { width: 60 });
+                    doc.y = 100;
+                }
                 doc.font('Helvetica-Bold')
                     .fontSize(16)
-                    .text('REPUBLIC OF RWANDA', { align: 'center' });
+                    .text('MISSION APPOINTMENT SYSTEM', { align: 'center' });
                 doc.fontSize(12)
                     .text('MINISTRY OF PUBLIC SERVICE', { align: 'center' });
                 doc.moveDown();
@@ -721,16 +940,29 @@ class MissionService {
                     .font('Helvetica-Bold').text(`${duration} days`, { continued: true })
                     .font('Helvetica').text(`.`);
                 doc.moveDown(1);
+                const dailyBudget = (parseFloat(mission.estimatedBudget.toString()) / duration).toFixed(2);
                 doc.text(`The authorized estimated budget for this mission is `, { continued: true, align: 'justify' })
-                    .font('Helvetica-Bold').text(`${mission.estimatedBudget}`, { continued: true })
-                    .font('Helvetica').text(` units, which will be fully covered by the institution's designated funds.`);
+                    .font('Helvetica-Bold').text(`${mission.estimatedBudget} BIF (approx. ${dailyBudget} BIF/day) `, { continued: true })
+                    .font('Helvetica').text(` which will be fully covered by the institution's designated funds.`);
                 doc.moveDown(3);
                 // --- Footer / Signature ---
                 const currentDate = new Date().toLocaleDateString('en-GB');
-                doc.font('Helvetica').text(`Done at Kigali, on ${currentDate}`, { align: 'right' });
-                doc.moveDown(2);
-                doc.font('Helvetica-Bold').text('Signature and Stamp', { align: 'right' });
-                doc.text('Authorizing Authority', { align: 'right' });
+                doc.font('Helvetica').text(`Done in Bujumbura, on ${currentDate}`, { align: 'right' });
+                doc.moveDown(1.5);
+                const signatureY = doc.y;
+                doc.rect(345, signatureY, 200, 80).strokeColor('#0F5A3C').lineWidth(1.5).stroke();
+                doc.fillColor('#0F5A3C')
+                    .font('Helvetica-Bold')
+                    .fontSize(9)
+                    .text('DIGITALLY SIGNED & VERIFIED', 350, signatureY + 8, { width: 190, align: 'center' });
+                doc.fillColor('#2D3748')
+                    .font('Helvetica')
+                    .fontSize(8)
+                    .text('Authorizing Authority: Ministry of Public Service', 350, signatureY + 22, { width: 190 })
+                    .text(`Sign Date: ${currentDate}`, 350, signatureY + 34, { width: 190 })
+                    .text(`Doc Ref: ${mission.missionNumber}`, 350, signatureY + 46, { width: 190 })
+                    .text('Verification Code: RNP-SECURE-' + mission.id.substring(0, 8).toUpperCase(), 350, signatureY + 58, { width: 190 });
+                doc.fillColor('#000000'); // Reset color
                 doc.end();
             }
             catch (error) {

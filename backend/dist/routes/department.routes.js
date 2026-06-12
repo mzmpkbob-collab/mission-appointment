@@ -43,7 +43,7 @@ const validateRequest = (req, res, next) => {
  *       403:
  *         description: Forbidden
  */
-router.get("/", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN", "HR", "HEAD_OF_DEPARTMENT"]), (req, res, next) => departmentController.getAllDepartments(req, res, next));
+router.get("/", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN", "HR", "HEAD_OF_DEPARTMENT", "DIRECTOR"]), (req, res, next) => departmentController.getAllDepartments(req, res, next));
 /**
  * @swagger
  * /api/departments/{id}:
@@ -81,7 +81,7 @@ router.get("/", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN", "HR", "HEAD
  *       404:
  *         description: Department not found
  */
-router.get("/:id", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN", "HR", "HEAD_OF_DEPARTMENT"]), (req, res, next) => departmentController.getDepartmentById(req, res, next));
+router.get("/:id", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN", "HR", "HEAD_OF_DEPARTMENT", "DIRECTOR"]), (req, res, next) => departmentController.getDepartmentById(req, res, next));
 /**
  * @swagger
  * /api/departments:
@@ -119,7 +119,7 @@ router.get("/:id", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN", "HR", "H
  *       409:
  *         description: Department already exists
  */
-router.post("/", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN"]), [
+router.post("/", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN", "DIRECTOR"]), [
     (0, express_validator_1.body)("name").notEmpty().withMessage("name is required"),
     (0, express_validator_1.body)("budgetAllocation").optional().isNumeric().withMessage("budgetAllocation must be numeric"),
     (0, express_validator_1.body)("headId").optional().isUUID().withMessage("headId must be a valid UUID"),
@@ -171,7 +171,7 @@ router.post("/", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN"]), [
  *       409:
  *         description: Department name or code already exists
  */
-router.put("/:id", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN"]), [
+router.put("/:id", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN", "DIRECTOR"]), [
     (0, express_validator_1.param)("id").notEmpty(),
     (0, express_validator_1.body)("budgetAllocation").optional().isNumeric().withMessage("budgetAllocation must be numeric"),
     (0, express_validator_1.body)("headId").optional().isUUID().withMessage("headId must be a valid UUID"),
@@ -202,7 +202,7 @@ router.put("/:id", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN"]), [
  *       404:
  *         description: Department not found
  */
-router.delete("/:id", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN"]), (req, res, next) => departmentController.deleteDepartment(req, res, next));
+router.delete("/:id", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN", "DIRECTOR"]), (req, res, next) => departmentController.deleteDepartment(req, res, next));
 /**
  * @swagger
  * /api/departments/{id}/users:
@@ -242,7 +242,7 @@ router.delete("/:id", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN"]), (re
  *       404:
  *         description: Department not found
  */
-router.get("/:id/users", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN", "HR", "HEAD_OF_DEPARTMENT"]), (req, res, next) => departmentController.getDepartmentUsers(req, res, next));
+router.get("/:id/users", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN", "HR", "HEAD_OF_DEPARTMENT", "DIRECTOR"]), (req, res, next) => departmentController.getDepartmentUsers(req, res, next));
 /**
  * @swagger
  * /api/departments/{id}/remove-head:
@@ -271,7 +271,7 @@ router.get("/:id/users", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN", "H
  *       404:
  *         description: Department not found
  */
-router.patch("/:id/remove-head", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN"]), (req, res, next) => departmentController.removeDepartmentHead(req, res, next));
+router.patch("/:id/remove-head", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN", "DIRECTOR"]), (req, res, next) => departmentController.removeDepartmentHead(req, res, next));
 /**
  * @swagger
  * /api/departments/{id}/transfer-users:
@@ -320,7 +320,7 @@ router.patch("/:id/remove-head", auth_1.authenticate, (0, auth_1.authorize)(["AD
  *       404:
  *         description: Department not found
  */
-router.post("/:id/transfer-users", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN", "HR"]), [
+router.post("/:id/transfer-users", auth_1.authenticate, (0, auth_1.authorize)(["ADMIN", "HR", "DIRECTOR"]), [
     (0, express_validator_1.body)("toDepartmentId").isUUID().withMessage("toDepartmentId must be a valid UUID"),
     (0, express_validator_1.body)("userIds").isArray().withMessage("userIds must be an array"),
     (0, express_validator_1.body)("userIds.*").isUUID().withMessage("Each user ID must be a valid UUID"),

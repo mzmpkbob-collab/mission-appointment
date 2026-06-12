@@ -64,8 +64,8 @@ export default function Login() {
         <div className="relative z-10 flex flex-col justify-between p-12 text-white">
           <div>
             <div className="flex items-center gap-3 mb-12">
-              <div className="w-14 h-14 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center">
-                <span className="text-2xl font-bold">RNP</span>
+              <div className="w-14 h-14 rounded-xl bg-white flex items-center justify-center overflow-hidden p-1 shadow-md">
+                <img src="/Logo_RNP_Burundi.png" alt="RNP Logo" className="w-full h-full object-contain" />
               </div>
               <div>
                 <h2 className="text-xl font-bold">Régie Nationale des Postes</h2>
@@ -110,8 +110,8 @@ export default function Login() {
         <div className="max-w-md mx-auto w-full">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl gradient-gov flex items-center justify-center">
-              <span className="text-xl font-bold text-white">RNP</span>
+            <div className="w-12 h-12 rounded-xl bg-white border flex items-center justify-center overflow-hidden p-1 shadow-sm">
+              <img src="/Logo_RNP_Burundi.png" alt="RNP Logo" className="w-full h-full object-contain" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-foreground">RNP</h2>

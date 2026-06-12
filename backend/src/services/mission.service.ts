@@ -6,6 +6,8 @@ import { CreateMissionDto, UpdateMissionDto, MissionFilterDto, AutoAssignmentDto
 import { Prisma, MissionStatus, AssignmentStatus } from "@prisma/client";
 import { prisma } from "../config/prisma";
 import PDFDocument from 'pdfkit';
+import * as path from 'path';
+import * as fs from 'fs';
 
 export class MissionService {
     private missionRepository: MissionRepository;
@@ -957,6 +959,24 @@ export class MissionService {
                 doc.on('error', reject);
 
                 // --- Header ---
+                const logoPaths = [
+                    path.join(__dirname, '../assets/Logo_RNP_Burundi.png'),
+                    path.join(__dirname, '../../src/assets/Logo_RNP_Burundi.png'),
+                    path.join(process.cwd(), 'src/assets/Logo_RNP_Burundi.png'),
+                    path.join(process.cwd(), 'backend/src/assets/Logo_RNP_Burundi.png')
+                ];
+                let logoPath = '';
+                for (const p of logoPaths) {
+                    if (fs.existsSync(p)) {
+                        logoPath = p;
+                        break;
+                    }
+                }
+                if (logoPath) {
+                    doc.image(logoPath, 267, 30, { width: 60 });
+                    doc.y = 100;
+                }
+
                 doc.font('Helvetica-Bold')
                     .fontSize(16)
                     .text('MISSION APPOINTMENT SYSTEM', { align: 'center' });
@@ -1014,19 +1034,36 @@ export class MissionService {
                     .font('Helvetica').text(`.`);
 
                 doc.moveDown(1);
+                const dailyBudget = (parseFloat(mission.estimatedBudget.toString()) / duration).toFixed(2);
                 doc.text(`The authorized estimated budget for this mission is `, { continued: true, align: 'justify' })
-                    .font('Helvetica-Bold').text(`${mission.estimatedBudget} `, { continued: true })
+                    .font('Helvetica-Bold').text(`${mission.estimatedBudget} BIF (approx. ${dailyBudget} BIF/day) `, { continued: true })
                     .font('Helvetica').text(` which will be fully covered by the institution's designated funds.`);
 
                 doc.moveDown(3);
 
                 // --- Footer / Signature ---
                 const currentDate = new Date().toLocaleDateString('en-GB');
-                doc.font('Helvetica').text(`Done in MIS, on ${currentDate}`, { align: 'right' });
+                doc.font('Helvetica').text(`Done in Bujumbura, on ${currentDate}`, { align: 'right' });
 
-                doc.moveDown(2);
-                doc.font('Helvetica-Bold').text('Signature and Stamp', { align: 'right' });
-                doc.text('Authorizing Authority', { align: 'right' });
+                doc.moveDown(1.5);
+
+                const signatureY = doc.y;
+                doc.rect(345, signatureY, 200, 80).strokeColor('#0F5A3C').lineWidth(1.5).stroke();
+
+                doc.fillColor('#0F5A3C')
+                    .font('Helvetica-Bold')
+                    .fontSize(9)
+                    .text('DIGITALLY SIGNED & VERIFIED', 350, signatureY + 8, { width: 190, align: 'center' });
+
+                doc.fillColor('#2D3748')
+                    .font('Helvetica')
+                    .fontSize(8)
+                    .text('Authorizing Authority: Ministry of Public Service', 350, signatureY + 22, { width: 190 })
+                    .text(`Sign Date: ${currentDate}`, 350, signatureY + 34, { width: 190 })
+                    .text(`Doc Ref: ${mission.missionNumber}`, 350, signatureY + 46, { width: 190 })
+                    .text('Verification Code: RNP-SECURE-' + mission.id.substring(0, 8).toUpperCase(), 350, signatureY + 58, { width: 190 });
+
+                doc.fillColor('#000000'); // Reset color
 
                 doc.end();
             } catch (error) {

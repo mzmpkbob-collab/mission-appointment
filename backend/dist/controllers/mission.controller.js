@@ -62,10 +62,11 @@ class MissionController {
     async autoAssignMission(req, res, next) {
         try {
             const missionId = req.params.id;
-            const { maxAssignees } = req.body;
+            const { maxAssignees, allowCrossDepartment } = req.body;
             const dto = {
                 missionId,
                 maxAssignees: maxAssignees || 1,
+                allowCrossDepartment: !!allowCrossDepartment,
             };
             const assignments = await this.missionService.autoAssignMission(dto);
             return response_1.ApiResponseHelper.success(res, assignments, "Mission auto-assigned successfully");

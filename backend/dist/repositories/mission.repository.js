@@ -19,6 +19,7 @@ class MissionRepository {
                     },
                 },
                 assignments: {
+                    orderBy: { assignedAt: "desc" },
                     include: {
                         employee: {
                             select: {
@@ -48,6 +49,7 @@ class MissionRepository {
                     },
                 },
                 assignments: {
+                    orderBy: { assignedAt: "desc" },
                     include: {
                         employee: {
                             select: {
@@ -91,6 +93,7 @@ class MissionRepository {
                     },
                 },
                 assignments: {
+                    orderBy: { assignedAt: "desc" },
                     include: {
                         employee: {
                             select: {
@@ -114,6 +117,7 @@ class MissionRepository {
                 //missionType: true,
                 department: true,
                 assignments: {
+                    orderBy: { assignedAt: "desc" },
                     include: {
                         employee: {
                             select: {
