@@ -76,10 +76,10 @@ export default function Login() {
 
           <div className="space-y-6">
             <h1 className="text-4xl font-bold leading-tight">
-              Mission Management<br />System
+              Mission Appointment<br />System
             </h1>
             <p className="text-lg text-white/80 max-w-md">
-              Digital platform for automated management of missions, 
+              Digital platform for automated appointment of missions, 
               approvals and reports for RNP.
             </p>
             

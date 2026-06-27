@@ -342,4 +342,4 @@ For issues or questions:
 
 ---
 
-*This integration provides a solid foundation for building the complete Mission Management System with secure authentication, role-based access, and a robust API layer.*
+*This integration provides a solid foundation for building the complete Mission Appointment System with secure authentication, role-based access, and a robust API layer.*

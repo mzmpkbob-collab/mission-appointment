@@ -10,6 +10,7 @@ class MissionRepository {
             include: {
                 // missionType: true,
                 department: true,
+                payments: true,
                 createdBy: {
                     select: {
                         id: true,
@@ -40,6 +41,7 @@ class MissionRepository {
             include: {
                 // missionType: true,
                 department: true,
+                payments: true,
                 createdBy: {
                     select: {
                         id: true,

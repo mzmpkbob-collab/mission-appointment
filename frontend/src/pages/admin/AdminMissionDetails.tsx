@@ -99,6 +99,9 @@ export default function AdminMissionDetails() {
     }
   };
 
+  const handleBudgetPayment = async () => {
+    if(!mission) return;
+  }
   const handleApproveSubstitution = async (requestId: string) => {
     try {
       setIsSubmitting(true);
@@ -247,6 +250,11 @@ export default function AdminMissionDetails() {
                       {formatCurrency(Number(mission.estimatedBudget))}
                     </span>
                   </div>
+                  {/* <div>
+                    <Button className="w-full" onClick={handleBudgetPayment} disabled={isSubmitting}>
+                      Create Budget Payment
+                    </Button>
+                  </div> */}
                 </div>
               </CardContent>
             </Card>

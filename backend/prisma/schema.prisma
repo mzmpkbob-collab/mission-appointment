@@ -74,6 +74,12 @@ enum UrgencyLevel {
   HIGH
 }
 
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
 // Core Models
 
 model User {
@@ -193,6 +199,7 @@ model Mission {
   approvals   MissionApproval[]
   reports     MissionReport[]
   expenses    ExpenseItem[]
+  payments  MissionPayment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -201,6 +208,23 @@ model Mission {
   @@index([status])
   @@index([departmentId])
   @@index([startDate])
+}
+
+model MissionPayment {
+  id            String        @id @default(uuid()) @db.Uuid
+  amount        Decimal       @db.Decimal(15,2)
+
+  phoneNumber   String?
+
+  transactionId String?
+
+  status        PaymentStatus @default(PENDING)
+
+  mission       Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  missionId     String  @db.Uuid
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model MissionAssignment {

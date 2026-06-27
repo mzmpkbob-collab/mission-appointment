@@ -50,6 +50,12 @@ export class MissionService {
             createdBy: {
                 connect: { id: createdById },
             },
+             payments: {
+                create: {
+                    amount: data.estimatedBudget,
+                    // status omitted because default is PENDING
+                },
+    },
         };
 
         return this.missionRepository.createMission(missionData);
