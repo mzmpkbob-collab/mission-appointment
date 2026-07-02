@@ -22,6 +22,7 @@ app.use(cors({
         'https://mission-appointment-dzv4wqkrc-micha6.vercel.app',
         'https://mission-appointment-iota.vercel.app',
         'https://mission-appointment-micha6.vercel.app',
+        'https://mission-appointment-mwfkv2cvn-micha6.vercel.app',
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
