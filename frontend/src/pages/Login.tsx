@@ -130,6 +130,7 @@ export default function Login() {
                 <SelectItem value="fr">French</SelectItem>
                 <SelectItem value="rn">Kirundi</SelectItem>
                 <SelectItem value="en">English</SelectItem>
+                <SelectItem value="sw">Swahili</SelectItem>
               </SelectContent>
             </Select>
           </div>
