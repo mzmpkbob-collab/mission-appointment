@@ -17,7 +17,8 @@ app.use(cors({
         'http://localhost:5173', 
         'http://localhost:8081', 
         'http://localhost:3000',
-        'https://mission-appointment.vercel.app'
+        'https://mission-appointment.vercel.app',
+        'https://mission-appointment-eight.vercel.app',
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
