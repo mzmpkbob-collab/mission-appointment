@@ -228,9 +228,9 @@ export default function CreateMission() {
       }
 
       navigate('/admin/missions');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating mission:', error);
-      toast.error("Failed to create mission");
+      toast.error(error.response?.data?.message || error.message || "Failed to create mission");
     } finally {
       setIsSubmitting(false);
     }

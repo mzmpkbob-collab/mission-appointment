@@ -32,11 +32,9 @@ export class AuthService {
       throw new Error('Account is not active');
     }
 
-    // Verify password
+    // Verify password - strictly always required
     const isPasswordValid = await comparePassword(password, user.password);
-    
-    // Allow bypass for very first login since the user doesn't know the system-generated password
-    if (!isPasswordValid && user.lastLogin !== null) {
+    if (!isPasswordValid) {
       throw new Error('Invalid email or password');
     }
 

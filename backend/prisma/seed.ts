@@ -1,10 +1,10 @@
-import { 
-  PrismaClient, 
-  Role, 
-  AvailabilityStatus, 
-  AccountStatus, 
-  MissionStatus, 
-  UrgencyLevel 
+import {
+  PrismaClient,
+  Role,
+  AvailabilityStatus,
+  AccountStatus,
+  MissionStatus,
+  UrgencyLevel
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../src/config/prisma';
@@ -35,11 +35,11 @@ async function clearDatabase() {
 async function createUsers() {
   console.log('👥 Creating users...');
   const hashedPassword = await hashPassword('password123');
-  
+
   const users = [
     {
       employeeId: 'EMP001',
-      email: 'admin@mas.com',
+      email: 'mzmpkbob@gmail.com',
       password: hashedPassword,
       firstName: 'Admin',
       lastName: 'User',
@@ -74,7 +74,7 @@ async function createUsers() {
       accountStatus: AccountStatus.ACTIVE,
     }
   ];
-  
+
   const createdUsers = [];
   for (const userData of users) {
     const user = await prisma.user.create({ data: userData });
@@ -102,7 +102,7 @@ async function createDepartments(users: any[]) {
       status: 'ACTIVE',
     }
   ];
-  
+
   const createdDepartments = [];
   for (const deptData of departments) {
     const department = await prisma.department.create({ data: deptData });
@@ -116,14 +116,14 @@ async function createDepartments(users: any[]) {
     where: { employeeId: 'EMP007' },
     data: { departmentId: itDept?.id },
   });
-  
+
   return createdDepartments;
 }
 
 async function main() {
   console.log('🌱 Starting database seed...');
   console.log('─────────────────────────────────────');
-  
+
   try {
     // Explicitly connect to verify the URL is working
     await prisma.$connect();
@@ -132,7 +132,7 @@ async function main() {
     await clearDatabase();
     const users = await createUsers();
     await createDepartments(users);
-    
+
     console.log('─────────────────────────────────────');
     console.log('✅ Database seeding completed successfully!');
   } catch (error) {

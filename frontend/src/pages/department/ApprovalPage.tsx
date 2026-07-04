@@ -84,9 +84,9 @@ export default function ApprovalPage() {
       await missionService.approveMission(missionId, comments);
       toast.success("Mission approved successfully");
       navigate('/department');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error approving mission:", error);
-      toast.error("Failed to approve mission");
+      toast.error(error.response?.data?.message || error.message || "Failed to approve mission");
     } finally {
       setIsProcessing(false);
     }
@@ -103,9 +103,9 @@ export default function ApprovalPage() {
       await missionService.rejectMission(missionId, comments, "Rejected by Department Head");
       toast.success("Mission rejected");
       navigate('/department');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error rejecting mission:", error);
-      toast.error("Failed to reject mission");
+      toast.error(error.response?.data?.message || error.message || "Failed to reject mission");
     } finally {
       setIsProcessing(false);
     }

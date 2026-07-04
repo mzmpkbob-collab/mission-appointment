@@ -21,7 +21,8 @@ export function errorHandler(
             ApiResponseHelper.conflict(res, "Unique constraint violation");
             return;
         }
-        ApiResponseHelper.badRequest(res, "Database error");
+        const dbMessage = err.meta?.cause || err.meta?.message || err.message.split("\n").pop() || "Database error";
+        ApiResponseHelper.badRequest(res, `Database error: ${dbMessage}`);
         return;
     }
 

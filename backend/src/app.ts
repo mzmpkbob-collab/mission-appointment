@@ -13,17 +13,7 @@ const app = express();
 
 // CORS configuration - Allow frontend to access the API
 app.use(cors({
-    origin: [
-        'http://localhost:5173', 
-        'http://localhost:8081', 
-        'http://localhost:3000',
-        'https://mission-appointment.vercel.app',
-        'https://mission-appointment-eight.vercel.app',
-        'https://mission-appointment-dzv4wqkrc-micha6.vercel.app',
-        'https://mission-appointment-iota.vercel.app',
-        'https://mission-appointment-micha6.vercel.app',
-        'https://mission-appointment-mwfkv2cvn-micha6.vercel.app',
-    ],
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']

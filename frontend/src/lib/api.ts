@@ -51,6 +51,9 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => response,
       async (error: AxiosError<ApiErrorResponse>) => {
+        if (error.response?.data?.message) {
+          error.message = error.response.data.message;
+        }
         const isAuthLoginRequest = error.config?.url?.includes('/auth/login');
         if (error.response?.status === 401 && !isAuthLoginRequest) {
           // Unauthorized - clear token and redirect to login (skip for login requests so errors show up)

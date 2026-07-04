@@ -54,11 +54,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: `Welcome back, ${response.user.firstName}!`,
       });
 
-      if (response.user.isFirstLogin) {
-        navigate('/first-login');
-        return;
-      }
-
       // Navigate based on role
       const roleRoutes: Record<string, string> = {
         ADMIN: '/admin',
@@ -69,9 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Login error:', error);
       
-      const errorMessage = error instanceof Error 
-                          ? error.message 
-                          : 'Login failed. Please check your credentials.';
+      const axiosError = error as any;
+      const errorMessage = axiosError.response?.data?.message || axiosError.message || 'Login failed. Please check your credentials.';
       
       toast.error('Login Failed', {
         description: errorMessage,

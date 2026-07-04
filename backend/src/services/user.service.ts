@@ -4,14 +4,18 @@ import { hashPassword } from "../utils/password";
 import { ApiError } from "../utils/ApiError";
 import { AvailabilityStatus, Prisma, Role } from "@prisma/client";
 import { CreateUserDto, RegisterUserDto, UpdateAvailabilityDto, UpdateUserDto, UserSkillDto } from "../types/user.dto";
+import { EmailService } from "./email.service";
+import crypto from "crypto";
 
 export class UserService {
     private userRepository: UserRepository;
     private departmentRepository: DepartmentRepository;
+    private emailService: EmailService;
 
     constructor() {
         this.userRepository = new UserRepository();
         this.departmentRepository = new DepartmentRepository();
+        this.emailService = new EmailService();
     }
 
     async registerUser(data: RegisterUserDto) {
@@ -46,11 +50,27 @@ export class UserService {
         
         const hashedPassword = await hashPassword(passwordToHash);
 
-        return this.userRepository.createUser({
+        const createdUser = await this.userRepository.createUser({
             ...data,
             employeeId,
             password: hashedPassword,
         } as Prisma.UserCreateInput);
+
+        // Generate a 24-hour password-setup token and send welcome email
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        await this.userRepository.updateUser(createdUser.id, {
+            resetPasswordToken: resetToken,
+            resetPasswordExpires: resetExpires,
+        });
+        // Fire-and-forget: don't block the response on email
+        this.emailService.sendWelcomeEmail(
+            createdUser.email,
+            createdUser.firstName,
+            resetToken
+        ).catch(err => console.error('Welcome email failed:', err));
+
+        return createdUser;
     }
 
     async getAllUsers() {

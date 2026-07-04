@@ -8,16 +8,19 @@ import { prisma } from "../config/prisma";
 import PDFDocument from 'pdfkit';
 import * as path from 'path';
 import * as fs from 'fs';
+import { EmailService } from "./email.service";
 
 export class MissionService {
     private missionRepository: MissionRepository;
     private userRepository: UserRepository;
     private departmentRepository: DepartmentRepository;
+    private emailService: EmailService;
 
     constructor() {
         this.missionRepository = new MissionRepository();
         this.userRepository = new UserRepository();
         this.departmentRepository = new DepartmentRepository();
+        this.emailService = new EmailService();
     }
 
     async createMission(data: CreateMissionDto, createdById: string) {
@@ -525,6 +528,26 @@ export class MissionService {
                 },
             },
         });
+
+        if (newStatus === 'APPROVED') {
+            const acceptedAssignments = updatedMission.assignments.filter(
+                a => a.assignmentStatus === 'ACCEPTED'
+            );
+
+            for (const assignment of acceptedAssignments) {
+                try {
+                    const pdfBuffer = await this.generateMissionLetter(missionId, assignment.employeeId);
+                    await this.emailService.sendMissionOrderEmail(
+                        assignment.employee.email,
+                        `${assignment.employee.firstName} ${assignment.employee.lastName}`,
+                        updatedMission.missionNumber,
+                        pdfBuffer
+                    );
+                } catch (err) {
+                    console.error(`Failed to send mission order email to ${assignment.employee.email}:`, err);
+                }
+            }
+        }
 
         return updatedMission;
     }
