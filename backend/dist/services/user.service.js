@@ -56,6 +56,7 @@ class UserService {
         });
         // Fire-and-forget: don't block the response on email
         this.emailService.sendWelcomeEmail(createdUser.email, createdUser.firstName, resetToken).catch(err => console.error('Welcome email failed:', err));
+        //pushToEmailQueue(createdUser.email, `3afd985d-0003-491e-8175-37548a564639`, {firstName: createdUser.firstName, setupUrl: `${process.env.FRONTEND_URL}/reset-password/${resetToken}` });
         return createdUser;
     }
     async getAllUsers() {

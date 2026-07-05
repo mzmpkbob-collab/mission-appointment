@@ -39,7 +39,7 @@ async function createUsers() {
   const users = [
     {
       employeeId: 'EMP001',
-      email: 'mzmpkbob@gmail.com',
+      email: 'gabvladimirbrenn2@gmail.com',
       password: hashedPassword,
       firstName: 'Admin',
       lastName: 'User',
