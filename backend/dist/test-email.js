@@ -12,7 +12,7 @@ async function run() {
     const emailService = new email_service_1.EmailService();
     console.log('Sending test password reset email...');
     try {
-        await emailService.sendPasswordResetEmail('gabvladimirbrenn2@gmail.com', 'test-token-123456');
+        await emailService.sendPasswordResetEmail('mzmpkbob@gmail.com', 'test-token-123456');
         console.log('Test email sent successfully!');
     }
     catch (err) {

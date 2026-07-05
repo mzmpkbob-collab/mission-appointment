@@ -14,7 +14,7 @@ class EmailService {
         }
     }
     getSender() {
-        const fromStr = process.env.SMTP_FROM || 'gabvladimirbrenn2@gmail.com';
+        const fromStr = process.env.SMTP_FROM || 'mzmpkbob@gmail.com';
         const match = fromStr.match(/^(?:"?([^"]*)"?\s)?<?([^>]+)>?$/);
         if (match) {
             return {
