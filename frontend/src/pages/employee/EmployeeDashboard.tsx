@@ -104,7 +104,7 @@ export default function EmployeeDashboard() {
   return (
     <DashboardLayout
       title="Dashboard"
-      subtitle="Welcome, Jean-Pierre"
+      subtitle="Welcome"
       userRole="employee"
       userName={`${currentUser.firstName} ${currentUser.lastName}`}
       userEmail={currentUser.email}
