@@ -105,7 +105,7 @@ export default function AdminDashboard() {
                 subtitle={`${activeUsers} active, ${inactiveUsers} inactive`}
               />
               <StatsCard
-                title="Number of Mission"
+                title="Number of Missions"
                 value={missions.length}
                 icon={Briefcase}
                 subtitle={`${todayMissionCount} created today`}
