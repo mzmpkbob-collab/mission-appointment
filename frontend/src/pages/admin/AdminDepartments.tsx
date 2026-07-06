@@ -296,7 +296,7 @@ export default function AdminDepartments() {
       children: [
         { name: 'Finance', children: [{ name: 'Accounting' }, { name: 'Treasury' }] },
         { name: 'Operations', children: [{ name: 'Logistics' }, { name: 'Distribution' }] },
-        { name: 'RH', children: [{ name: 'Recruitment' }, { name: 'Training' }] },
+        { name: 'HR', children: [{ name: 'Recruitment' }, { name: 'Training' }] },
       ],
     },
   ];
