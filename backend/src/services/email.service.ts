@@ -135,6 +135,142 @@ export class EmailService {
     }
   }
 
+  async sendMissionAssignmentEmail(
+    email: string,
+    employeeName: string,
+    missionTitle: string,
+    missionNumber: string,
+    destination: string,
+    startDate: string,
+    endDate: string
+  ) {
+    const assignmentsUrl = `${process.env.FRONTEND_URL}/my-assignments`;
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <div style="background-color: #2563eb; padding: 20px; border-radius: 6px 6px 0 0; text-align: center;">
+          <h2 style="color: #ffffff; margin: 0; font-size: 20px;">Mission Assignment Notification</h2>
+        </div>
+        <div style="padding: 24px;">
+          <p style="margin-top: 0;">Hello <strong>${employeeName}</strong>,</p>
+          <p>You have been automatically assigned to the following mission. Please review the details and respond at your earliest convenience.</p>
+
+          <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px;">
+            <tr style="background-color: #f3f4f6;">
+              <td style="padding: 10px 14px; font-weight: bold; width: 40%;">Reference No.</td>
+              <td style="padding: 10px 14px;">${missionNumber}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 14px; font-weight: bold;">Mission Title</td>
+              <td style="padding: 10px 14px;">${missionTitle}</td>
+            </tr>
+            <tr style="background-color: #f3f4f6;">
+              <td style="padding: 10px 14px; font-weight: bold;">Destination</td>
+              <td style="padding: 10px 14px;">${destination}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 14px; font-weight: bold;">Start Date</td>
+              <td style="padding: 10px 14px;">${startDate}</td>
+            </tr>
+            <tr style="background-color: #f3f4f6;">
+              <td style="padding: 10px 14px; font-weight: bold;">End Date</td>
+              <td style="padding: 10px 14px;">${endDate}</td>
+            </tr>
+          </table>
+
+          <p>Please log in to the MAS system to <strong>accept</strong> or <strong>decline</strong> this assignment. Your response is required to proceed with mission planning.</p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${assignmentsUrl}" style="background-color: #2563eb; color: white; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; display: inline-block;">
+              View My Assignments
+            </a>
+          </div>
+
+          <p style="font-size: 13px; color: #555;">If the button doesn't work, copy and paste this link into your browser:</p>
+          <p style="font-size: 12px; color: #2563eb; word-break: break-all;">${assignmentsUrl}</p>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #e0e0e0; margin: 0;">
+        <p style="font-size: 12px; color: #666; padding: 16px 24px; margin: 0;">This is an automated message from the Mission Appointment System. Please do not reply to this email.</p>
+      </div>
+    `;
+
+    try {
+      await this.sendEmailViaBrevo(email, `MAS - Mission Assignment: ${missionNumber}`, htmlContent);
+    } catch (error) {
+      console.error('Error sending mission assignment email:', error);
+    }
+  }
+
+  async sendAssignmentResponseNotification(
+    adminEmail: string,
+    adminName: string,
+    employeeName: string,
+    missionTitle: string,
+    missionNumber: string,
+    action: 'ACCEPTED' | 'DECLINED' | 'SUBSTITUTION_REQUESTED',
+    notes?: string
+  ) {
+    const actionLabels: Record<string, { label: string; color: string; icon: string }> = {
+      ACCEPTED: { label: 'Accepted', color: '#16a34a', icon: '✅' },
+      DECLINED: { label: 'Declined', color: '#dc2626', icon: '❌' },
+      SUBSTITUTION_REQUESTED: { label: 'Requested Substitution', color: '#d97706', icon: '🔄' },
+    };
+
+    const { label, color, icon } = actionLabels[action];
+    const dashboardUrl = `${process.env.FRONTEND_URL}/missions`;
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <div style="background-color: ${color}; padding: 20px; border-radius: 6px 6px 0 0; text-align: center;">
+          <h2 style="color: #ffffff; margin: 0; font-size: 20px;">${icon} Mission Assignment Update</h2>
+        </div>
+        <div style="padding: 24px;">
+          <p style="margin-top: 0;">Hello <strong>${adminName}</strong>,</p>
+          <p>An employee has responded to a mission assignment. Here are the details:</p>
+
+          <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px;">
+            <tr style="background-color: #f3f4f6;">
+              <td style="padding: 10px 14px; font-weight: bold; width: 40%;">Employee</td>
+              <td style="padding: 10px 14px;">${employeeName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 14px; font-weight: bold;">Mission</td>
+              <td style="padding: 10px 14px;">${missionTitle}</td>
+            </tr>
+            <tr style="background-color: #f3f4f6;">
+              <td style="padding: 10px 14px; font-weight: bold;">Reference No.</td>
+              <td style="padding: 10px 14px;">${missionNumber}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 14px; font-weight: bold;">Action Taken</td>
+              <td style="padding: 10px 14px;">
+                <span style="background-color: ${color}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 13px; font-weight: bold;">${label}</span>
+              </td>
+            </tr>
+            ${notes ? `
+            <tr style="background-color: #f3f4f6;">
+              <td style="padding: 10px 14px; font-weight: bold;">Notes / Reason</td>
+              <td style="padding: 10px 14px;">${notes}</td>
+            </tr>` : ''}
+          </table>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${dashboardUrl}" style="background-color: #2563eb; color: white; padding: 12px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 14px; display: inline-block;">
+              Go to Missions Dashboard
+            </a>
+          </div>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #e0e0e0; margin: 0;">
+        <p style="font-size: 12px; color: #666; padding: 16px 24px; margin: 0;">This is an automated message from the Mission Appointment System. Please do not reply to this email.</p>
+      </div>
+    `;
+
+    try {
+      await this.sendEmailViaBrevo(adminEmail, `MAS - Assignment ${label}: ${missionNumber} — ${employeeName}`, htmlContent);
+    } catch (error) {
+      console.error(`Error sending assignment response notification to ${adminEmail}:`, error);
+    }
+  }
+
   async sendMissionOrderEmail(email: string, employeeName: string, missionNumber: string, pdfBuffer: Buffer) {
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
