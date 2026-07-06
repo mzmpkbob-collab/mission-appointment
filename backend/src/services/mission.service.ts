@@ -301,6 +301,21 @@ export class MissionService {
                 assignmentReason: assignment.assignmentReason,
                 fairnessScore: parseFloat(assignment.fairnessScoreAtAssignment.toString()),
             });
+
+            // Send call-to-action email to the assigned employee (fire-and-forget)
+            try {
+                await this.emailService.sendMissionAssignmentEmail(
+                    assignment.employee.email,
+                    `${assignment.employee.firstName} ${assignment.employee.lastName}`,
+                    mission.title,
+                    mission.missionNumber,
+                    mission.destination,
+                    new Date(mission.startDate).toLocaleDateString('en-GB'),
+                    new Date(mission.endDate).toLocaleDateString('en-GB')
+                );
+            } catch (emailErr) {
+                console.error(`Failed to send assignment notification email to ${assignment.employee.email}:`, emailErr);
+            }
         }
 
         // Update mission status
@@ -462,6 +477,28 @@ export class MissionService {
                 where: { id: assignment.missionId },
                 data: { status: 'ASSIGNED' },
             });
+        }
+
+        // Notify all ADMIN users of the employee's response (fire-and-forget)
+        try {
+            const adminUsers = await prisma.user.findMany({
+                where: { role: 'ADMIN', accountStatus: 'ACTIVE' },
+                select: { email: true, firstName: true, lastName: true },
+            });
+            const employeeFullName = `${updatedAssignment.employee.firstName} ${updatedAssignment.employee.lastName}`;
+            for (const admin of adminUsers) {
+                await this.emailService.sendAssignmentResponseNotification(
+                    admin.email,
+                    `${admin.firstName} ${admin.lastName}`,
+                    employeeFullName,
+                    updatedAssignment.mission.title,
+                    updatedAssignment.mission.missionNumber,
+                    response,
+                    notes
+                );
+            }
+        } catch (emailErr) {
+            console.error('Failed to send admin assignment response notification:', emailErr);
         }
 
         return updatedAssignment;
@@ -677,6 +714,28 @@ export class MissionService {
                 substitutionRequest: true,
             },
         });
+
+        // Notify all ADMIN users of the substitution request (fire-and-forget)
+        try {
+            const adminUsers = await prisma.user.findMany({
+                where: { role: 'ADMIN', accountStatus: 'ACTIVE' },
+                select: { email: true, firstName: true, lastName: true },
+            });
+            const employeeFullName = `${updatedAssignment.employee.firstName} ${updatedAssignment.employee.lastName}`;
+            for (const admin of adminUsers) {
+                await this.emailService.sendAssignmentResponseNotification(
+                    admin.email,
+                    `${admin.firstName} ${admin.lastName}`,
+                    employeeFullName,
+                    updatedAssignment.mission.title,
+                    updatedAssignment.mission.missionNumber,
+                    'SUBSTITUTION_REQUESTED',
+                    detailedReason
+                );
+            }
+        } catch (emailErr) {
+            console.error('Failed to send admin substitution request notification:', emailErr);
+        }
 
         return {
             assignment: updatedAssignment,
