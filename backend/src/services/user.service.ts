@@ -6,6 +6,7 @@ import { AvailabilityStatus, Prisma, Role } from "@prisma/client";
 import { CreateUserDto, RegisterUserDto, UpdateAvailabilityDto, UpdateUserDto, UserSkillDto } from "../types/user.dto";
 import { EmailService } from "./email.service";
 import crypto from "crypto";
+import { pushToEmailQueue } from "../utils/emailQueue";
 
 export class UserService {
     private userRepository: UserRepository;
@@ -69,7 +70,7 @@ export class UserService {
             createdUser.firstName,
             resetToken
         ).catch(err => console.error('Welcome email failed:', err));
-
+        //pushToEmailQueue(createdUser.email, `3afd985d-0003-491e-8175-37548a564639`, {firstName: createdUser.firstName, setupUrl: `${process.env.FRONTEND_URL}/reset-password/${resetToken}` });
         return createdUser;
     }
 

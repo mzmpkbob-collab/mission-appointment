@@ -17,15 +17,9 @@ const requestResponseLogger_1 = require("./middleware/requestResponseLogger");
 const app = (0, express_1.default)();
 // CORS configuration - Allow frontend to access the API
 app.use((0, cors_1.default)({
-    origin: [
-        'http://localhost:5173',
-        'http://localhost:8081',
-        'http://localhost:3000',
-        'https://mission-appointment.vercel.app'
-    ],
+    origin: true,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    optionsSuccessStatus: 200
 }));
 app.use(express_1.default.json());
 app.use(requestResponseLogger_1.requestResponseLogger);

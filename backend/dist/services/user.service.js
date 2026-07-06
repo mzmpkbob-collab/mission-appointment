@@ -1,4 +1,7 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserService = void 0;
 const user_repository_1 = require("../repositories/user.repository");
@@ -6,10 +9,13 @@ const department_repository_1 = require("../repositories/department.repository")
 const password_1 = require("../utils/password");
 const ApiError_1 = require("../utils/ApiError");
 const client_1 = require("@prisma/client");
+const email_service_1 = require("./email.service");
+const crypto_1 = __importDefault(require("crypto"));
 class UserService {
     constructor() {
         this.userRepository = new user_repository_1.UserRepository();
         this.departmentRepository = new department_repository_1.DepartmentRepository();
+        this.emailService = new email_service_1.EmailService();
     }
     async registerUser(data) {
         return this.createUser(data);
@@ -36,11 +42,22 @@ class UserService {
             }
         }
         const hashedPassword = await (0, password_1.hashPassword)(passwordToHash);
-        return this.userRepository.createUser({
+        const createdUser = await this.userRepository.createUser({
             ...data,
             employeeId,
             password: hashedPassword,
         });
+        // Generate a 24-hour password-setup token and send welcome email
+        const resetToken = crypto_1.default.randomBytes(32).toString('hex');
+        const resetExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        await this.userRepository.updateUser(createdUser.id, {
+            resetPasswordToken: resetToken,
+            resetPasswordExpires: resetExpires,
+        });
+        // Fire-and-forget: don't block the response on email
+        this.emailService.sendWelcomeEmail(createdUser.email, createdUser.firstName, resetToken).catch(err => console.error('Welcome email failed:', err));
+        //pushToEmailQueue(createdUser.email, `3afd985d-0003-491e-8175-37548a564639`, {firstName: createdUser.firstName, setupUrl: `${process.env.FRONTEND_URL}/reset-password/${resetToken}` });
+        return createdUser;
     }
     async getAllUsers() {
         return this.userRepository.getAllUsers();

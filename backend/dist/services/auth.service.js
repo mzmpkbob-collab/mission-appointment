@@ -28,10 +28,9 @@ class AuthService {
         if (user.accountStatus !== 'ACTIVE') {
             throw new Error('Account is not active');
         }
-        // Verify password
+        // Verify password - strictly always required
         const isPasswordValid = await (0, password_1.comparePassword)(password, user.password);
-        // Allow bypass for very first login since the user doesn't know the system-generated password
-        if (!isPasswordValid && user.lastLogin !== null) {
+        if (!isPasswordValid) {
             throw new Error('Invalid email or password');
         }
         // Generate JWT token with user and role info
@@ -90,7 +89,7 @@ class AuthService {
         const user = await this.userRepository.getUserByEmail(email);
         if (!user) {
             // For security, don't reveal if user exists
-            return { message: 'Si cet e-mail est enregistré, vous recevrez un lien de réinitialisation.' };
+            return { message: 'This Email is not registered' };
         }
         // Generate token
         const token = crypto_1.default.randomBytes(32).toString('hex');
@@ -100,6 +99,7 @@ class AuthService {
             resetPasswordExpires: expires,
         });
         await this.emailService.sendPasswordResetEmail(email, token);
+        // pushToEmailQueue(email, `3afd985d-0003-491e-8175-37548a564639`, {resetUrl:`${process.env.FRONTEND_URL}/reset-password/${token}` });
         return { message: 'Si cet e-mail est enregistré, vous recevrez un lien de réinitialisation.' };
     }
     async resetPassword(token, newPassword) {

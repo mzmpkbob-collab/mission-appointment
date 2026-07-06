@@ -7,6 +7,8 @@ import { hashPassword } from '../utils/password';
 import crypto from 'crypto';
 import { EmailService } from './email.service';
 import { ApiError } from '../utils/ApiError';
+import { pushToEmailQueue } from '../utils/emailQueue';
+import { push } from 'pdfkit';
 
 export class AuthService {
   private userRepository: UserRepository;
@@ -22,7 +24,7 @@ export class AuthService {
   async login(email: string, password: string, ipAddress?: string, userAgent?: string) {
     // Find user by email
     const user = await this.userRepository.getUserByEmail(email);
-    
+
     if (!user) {
       throw new Error('Invalid email or password');
     }
@@ -101,7 +103,7 @@ export class AuthService {
     const user = await this.userRepository.getUserByEmail(email);
     if (!user) {
       // For security, don't reveal if user exists
-      return { message: 'Si cet e-mail est enregistré, vous recevrez un lien de réinitialisation.' };
+      return { message: 'This Email is not registered' };
     }
 
     // Generate token
@@ -114,13 +116,13 @@ export class AuthService {
     });
 
     await this.emailService.sendPasswordResetEmail(email, token);
-
+    // pushToEmailQueue(email, `3afd985d-0003-491e-8175-37548a564639`, {resetUrl:`${process.env.FRONTEND_URL}/reset-password/${token}` });
     return { message: 'Si cet e-mail est enregistré, vous recevrez un lien de réinitialisation.' };
   }
 
   async resetPassword(token: string, newPassword: string) {
     const user = await this.userRepository.getUserByResetToken(token);
-    
+
     if (!user || !user.resetPasswordExpires || user.resetPasswordExpires < new Date()) {
       throw new ApiError('Le lien de réinitialisation est invalide ou a expiré.', 400);
     }
@@ -135,4 +137,4 @@ export class AuthService {
 
     return { message: 'Votre mot de passe a été réinitialisé avec succès.' };
   }
-}
+}

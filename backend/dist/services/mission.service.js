@@ -46,11 +46,13 @@ const prisma_1 = require("../config/prisma");
 const pdfkit_1 = __importDefault(require("pdfkit"));
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
+const email_service_1 = require("./email.service");
 class MissionService {
     constructor() {
         this.missionRepository = new mission_repository_1.MissionRepository();
         this.userRepository = new user_repository_1.UserRepository();
         this.departmentRepository = new department_repository_1.DepartmentRepository();
+        this.emailService = new email_service_1.EmailService();
     }
     async createMission(data, createdById) {
         // Validate department exists
@@ -505,6 +507,18 @@ class MissionService {
                 },
             },
         });
+        if (newStatus === 'APPROVED') {
+            const acceptedAssignments = updatedMission.assignments.filter(a => a.assignmentStatus === 'ACCEPTED');
+            for (const assignment of acceptedAssignments) {
+                try {
+                    const pdfBuffer = await this.generateMissionLetter(missionId, assignment.employeeId);
+                    await this.emailService.sendMissionOrderEmail(assignment.employee.email, `${assignment.employee.firstName} ${assignment.employee.lastName}`, updatedMission.missionNumber, pdfBuffer);
+                }
+                catch (err) {
+                    console.error(`Failed to send mission order email to ${assignment.employee.email}:`, err);
+                }
+            }
+        }
         return updatedMission;
     }
     // Reject mission at any approval level

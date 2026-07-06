@@ -15,7 +15,8 @@ function errorHandler(err, req, res, next) {
             response_1.ApiResponseHelper.conflict(res, "Unique constraint violation");
             return;
         }
-        response_1.ApiResponseHelper.badRequest(res, "Database error");
+        const dbMessage = err.meta?.cause || err.meta?.message || err.message.split("\n").pop() || "Database error";
+        response_1.ApiResponseHelper.badRequest(res, `Database error: ${dbMessage}`);
         return;
     }
     if (Array.isArray(err?.errors)) {
